@@ -5,12 +5,13 @@
 import os
 import pathlib
 import time
-from typing import List
+from typing import List, Union
 
 import click
 import matplotlib.animation
 import matplotlib.pyplot as plt
 import numpy as np
+import pygifsicle
 import seaborn as sns
 
 from pykeen.models import Model
@@ -21,15 +22,33 @@ __all__ = [
     'LazyEntityPlotCallback',
 ]
 
+FIGSIZE = 6, 4
+
 
 class EntityPlotCallback(TrainingCallback):
-    def __init__(self, directory: pathlib.Path, extension: str, frequency: int = 5, subdirectory_name: str = 'img'):
+    def __init__(
+        self,
+        directory: pathlib.Path,
+        static_extension: str = 'png',
+        animated_extensions: Union[str, List[str]] = 'gif',
+        frequency: int = 5,
+        subdirectory_name: str = 'img',
+        filename: str = 'embedding',
+    ):
         super().__init__()
         self.directory = directory
+        self.subdirectory_name = subdirectory_name
         self.subdirectory = directory / subdirectory_name
         self.subdirectory.mkdir(parents=True, exist_ok=True)
-        self.extension = extension
         self.frequency = frequency
+        self.filename = filename
+        self.static_extension = static_extension.lstrip('.')
+        if animated_extensions is None:
+            self.animated_extensions = ['gif']
+        elif isinstance(animated_extensions, str):
+            self.animated_extensions = [animated_extensions.lstrip('.')]
+        else:
+            self.animated_extensions = [e.lstrip('.') for e in animated_extensions]
 
     def post_epoch(self, epoch: int, epoch_loss: float):
         if epoch % self.frequency:
@@ -39,7 +58,7 @@ class EntityPlotCallback(TrainingCallback):
             model=self.loop.model,
             epoch=epoch,
             epoch_loss=epoch_loss,
-            extension=self.extension,
+            extension=self.static_extension,
         )
 
     def post_train(self, losses: List[float]) -> None:
@@ -52,9 +71,16 @@ class EntityPlotCallback(TrainingCallback):
         fig.savefig(self.directory.joinpath('losses').with_suffix('.svg'))
         plt.close(fig)
 
-        click.secho(f'Start making GIF ({time.asctime()})')
-        os.system(f'convert -delay 5 -loop 1 {self.subdirectory}/*.{self.extension} {self.directory}/embedding.gif')
-        click.secho(f'Done making GIF ({time.asctime()})')
+        for animated_extension in self.animated_extensions:
+            click.secho(f'Start making {animated_extension} ({time.asctime()})')
+            path = self.directory.joinpath(f'{self.filename}.{animated_extension}').as_posix()
+            os.system(f'convert -delay 5 -loop 1 {self.subdirectory}/*.{self.static_extension} {path}')
+            click.secho(f'Done making {animated_extension} ({time.asctime()})')
+
+            if animated_extension == 'gif':
+                click.secho(f'Optimizing {animated_extension} with gifsicle ({time.asctime()})')
+                pygifsicle.optimize(path)
+                click.secho(f'Done optimizing {animated_extension} with gifsicle ({time.asctime()})')
 
 
 class LazyEntityPlotCallback(TrainingCallback):
@@ -74,7 +100,7 @@ class LazyEntityPlotCallback(TrainingCallback):
 
     def post_train(self, losses: List[float]):
         data = np.stack(self.data)
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=FIGSIZE)
         path_collection = plt.scatter([], [])
 
         def init():
@@ -94,7 +120,7 @@ class LazyEntityPlotCallback(TrainingCallback):
             blit=True,
         )
         # plt.show()
-        func_animation.save(self.directory / "animation.mp4", writer="ffmpeg")
+        func_animation.save(self.directory / "embeddings.mp4", writer="ffmpeg")
         plt.close(fig)
 
 
@@ -111,10 +137,10 @@ def plot(
     :param directory: The directory in which to save the chart
     :param model: The model whose embeddings will be plotted
     :param epoch: The epoch from which the embeddings are plotted
-    :param epoch_loss: The loss value accumulated over all subb-atches during the epoch
+    :param epoch_loss: The loss value accumulated over all sub-batches during the epoch
     :param extension: The file extension to use for saving. Defaults to ``png``.
     """
-    fig, ax = plt.subplots(1, 1, figsize=(6, 4))
+    fig, ax = plt.subplots(1, 1, figsize=FIGSIZE)
     model.eval()
     entity_data = model.entity_embeddings().detach().numpy()
     sns.scatterplot(

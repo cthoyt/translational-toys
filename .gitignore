@@ -1,5 +1,4 @@
-
 .DS_Store
-line/img/*.png
-mesh/img/*.png
+# Skip PNGs - all final images should be SVG, EPS, GIF, or WEBP
+*.png
 *.pyc

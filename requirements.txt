@@ -7,3 +7,4 @@ pykeen
 more_itertools
 more_click
 numpy
+pygifsicle

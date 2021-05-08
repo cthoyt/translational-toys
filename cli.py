@@ -9,7 +9,7 @@ import click
 from more_click import verbose_option
 from torch.optim import Adam
 
-from callbacks import EntityPlotCallback, LazyEntityPlotCallback
+from callbacks import EntityPlotCallback
 from pykeen.losses import Loss, loss_resolver
 from pykeen.models import TransE
 from pykeen.training import LCWATrainingLoop
@@ -19,7 +19,6 @@ from triples import line_factory, mesh_factory
 
 HERE = pathlib.Path(__file__).parent.resolve()
 
-extension_option = click.option('-x', '--extension', default='png')
 inverse_option = click.option('--inverse', is_flag=True)
 
 
@@ -30,38 +29,35 @@ def main():
 
 @main.command()
 @click.option('-n', '--num-entities', type=int, default=40, show_default=True)
-@click.option('-e', '--num-epochs', type=int, default=2000, show_default=True)
-@extension_option
-@verbose_option
+@click.option('-e', '--num-epochs', type=int, default=800, show_default=True)
 @loss_resolver.get_option('--loss', default='softplus')
 @inverse_option
-def line(num_entities: int, num_epochs: int, extension: str, loss: Type[Loss], inverse: bool):
+@verbose_option
+def line(num_entities: int, num_epochs: int, loss: Type[Loss], inverse: bool):
     """Train a translational model on a line."""
     triples_factory = line_factory(num_entities, create_inverse_triples=inverse)
-    train(name='line', triples_factory=triples_factory, num_epochs=num_epochs, extension=extension, loss=loss)
+    train(name='line', triples_factory=triples_factory, num_epochs=num_epochs, loss=loss)
 
 
 @main.command()
 @click.option('-r', '--rows', type=int, default=8, show_default=True)
 @click.option('-c', '--columns', type=int, default=9, show_default=True)
 @click.option('-e', '--num-epochs', type=int, default=600, show_default=True)
-@extension_option
 @loss_resolver.get_option('--loss', default='nssa')
 @inverse_option
 @verbose_option
-def mesh(rows: int, columns: int, num_epochs: int, extension: str, loss: Type[Loss], inverse: bool):
+def mesh(rows: int, columns: int, num_epochs: int, loss: Type[Loss], inverse: bool):
     """Train a translational model on a mesh."""
     triples_factory = mesh_factory(rows=rows, columns=columns, create_inverse_triples=inverse)
-    train(name='mesh', triples_factory=triples_factory, num_epochs=num_epochs, extension=extension, loss=loss)
+    train(name='square_grid', triples_factory=triples_factory, num_epochs=num_epochs, loss=loss)
 
 
 def train(
     triples_factory: CoreTriplesFactory,
     num_epochs: int,
     name: str,
-    extension: str,
     loss: Type[Loss],
-):
+) -> None:
     directory = HERE.joinpath(name)
 
     # Set the random seed for all experiments
@@ -94,8 +90,8 @@ def train(
         num_epochs=num_epochs,
         batch_size=256,
         callbacks=[
-            EntityPlotCallback(directory, extension),
-            LazyEntityPlotCallback(directory),
+            EntityPlotCallback(directory=directory, animated_extensions=['gif', 'webp']),
+            # LazyEntityPlotCallback(directory),
         ],
     )
 
