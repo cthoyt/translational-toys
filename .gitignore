@@ -2,3 +2,4 @@
 .DS_Store
 line/img/*.png
 mesh/img/*.png
+*.pyc
