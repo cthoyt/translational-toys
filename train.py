@@ -79,7 +79,7 @@ class LazyEntityPlotCallback(TrainingCallback):
     def post_train(self, losses: List[float]):
         data = np.stack(self.data)
         fig, ax = plt.subplots()
-        path_collection = plt.scatter([], [], marker='ro')
+        path_collection = plt.scatter([], [])
 
         def init():
             ax.set_xlim(data[..., 0].min(), data[..., 0].max())
