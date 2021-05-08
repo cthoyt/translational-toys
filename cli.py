@@ -98,3 +98,7 @@ def train(
             LazyEntityPlotCallback(directory),
         ],
     )
+
+
+if __name__ == '__main__':
+    main()
