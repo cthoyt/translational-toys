@@ -16,8 +16,6 @@ import seaborn as sns
 from pykeen.models import Model
 from pykeen.training import TrainingCallback
 
-HERE = pathlib.Path(__file__).parent.resolve()
-
 __all__ = [
     'EntityPlotCallback',
     'LazyEntityPlotCallback',
@@ -40,7 +38,7 @@ class EntityPlotCallback(TrainingCallback):
             directory=self.subdirectory,
             model=self.loop.model,
             epoch=epoch,
-            loss=epoch_loss,
+            epoch_loss=epoch_loss,
             extension=self.extension,
         )
 
@@ -100,7 +98,22 @@ class LazyEntityPlotCallback(TrainingCallback):
         plt.close(fig)
 
 
-def plot(*, directory: pathlib.Path, model: Model, epoch: int, loss: float, extension: str):
+def plot(
+    *,
+    directory: pathlib.Path,
+    model: Model,
+    epoch: int,
+    epoch_loss: float,
+    extension: str = 'png',
+) -> None:
+    """Save a figure of the embedding plot for the model at the given epoch.
+
+    :param directory: The directory in which to save the chart
+    :param model: The model whose embeddings will be plotted
+    :param epoch: The epoch from which the embeddings are plotted
+    :param epoch_loss: The loss value accumulated over all subb-atches during the epoch
+    :param extension: The file extension to use for saving. Defaults to ``png``.
+    """
     fig, ax = plt.subplots(1, 1, figsize=(6, 4))
     model.eval()
     entity_data = model.entity_embeddings().detach().numpy()
@@ -111,7 +124,8 @@ def plot(*, directory: pathlib.Path, model: Model, epoch: int, loss: float, exte
         hue=sns.color_palette("hls", entity_data.shape[0]),
         legend=False,
     )
-    ax.set_title(f'Epoch: {epoch:04}; Loss: {loss:.04}')
+    ax.set_title(f'Epoch: {epoch:04}; Loss: {epoch_loss:.04}')
     fig.tight_layout()
+    extension = extension.lstrip('.')  # don't want double dots
     fig.savefig(directory.joinpath(f'{epoch:04}').with_suffix(f'.{extension}'), dpi=300)
     plt.close(fig)
