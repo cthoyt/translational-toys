@@ -5,10 +5,12 @@
 import os
 import pathlib
 import time
-from typing import Iterable, Tuple, Type, cast
+from typing import Iterable, List, Tuple, Type, cast
 
 import click
+import matplotlib.animation
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
 import torch
 from more_click import verbose_option
@@ -25,21 +27,79 @@ HERE = pathlib.Path(__file__).parent.resolve()
 
 
 class EntityPlotCallback(TrainingCallback):
-    def __init__(self, directory: pathlib.Path, extension: str):
+    def __init__(self, directory: pathlib.Path, extension: str, frequency: int = 5, subdirectory_name: str = 'img'):
+        super().__init__()
+        self.directory = directory
+        self.subdirectory = directory / subdirectory_name
+        self.subdirectory.mkdir(parents=True, exist_ok=True)
+        self.extension = extension
+        self.frequency = frequency
+
+    def post_epoch(self, epoch: int, epoch_loss: float):
+        if epoch % self.frequency:
+            return  # only make a plot every self.frequency epochs
+        plot(
+            directory=self.subdirectory,
+            model=self.loop.model,
+            epoch=epoch,
+            loss=epoch_loss,
+            extension=self.extension,
+        )
+
+    def post_train(self, losses: List[float]) -> None:
+        fig, ax = plt.subplots(1, 1, figsize=(6, 4))
+        x, y = zip(*enumerate(losses))
+        sns.lineplot(x=x, y=y, ax=ax)
+        ax.set_xlabel('Epoch')
+        ax.set_ylabel('Loss')
+        fig.tight_layout()
+        fig.savefig(self.directory.joinpath('losses').with_suffix('.svg'))
+        plt.close(fig)
+
+        click.secho(f'Start making GIF ({time.asctime()})')
+        os.system(f'convert -delay 5 -loop 1 {self.subdirectory}/*.{self.extension} {self.directory}/embedding.gif')
+        click.secho(f'Done making GIF ({time.asctime()})')
+
+
+class LazyEntityPlotCallback(TrainingCallback):
+    def __init__(self, directory, frequency: int = 5):
         super().__init__()
         self.directory = directory
         self.directory.mkdir(parents=True, exist_ok=True)
-        self.extension = extension
+        self.frequency = frequency
+        self.data = []
 
-    def post_epoch(self, epoch: int, loss: float):
-        if not epoch % 5:
-            plot(
-                directory=self.directory,
-                model=self.loop.model,
-                epoch=epoch,
-                loss=loss,
-                extension=self.extension,
-            )
+    def post_epoch(self, epoch: int, epoch_loss: float):
+        if epoch % self.frequency:
+            return
+        self.loop.model.eval()
+        entity_data = self.loop.model.entity_embeddings().detach().numpy()
+        self.data.append(entity_data)
+
+    def post_train(self, losses: List[float]):
+        data = np.stack(self.data)
+        fig, ax = plt.subplots()
+        path_collection = plt.scatter([], [], marker='ro')
+
+        def init():
+            ax.set_xlim(data[..., 0].min(), data[..., 0].max())
+            ax.set_ylim(data[..., 1].min(), data[..., 1].max())
+            return path_collection,
+
+        def update(frame: int):
+            path_collection.set_offsets(data[frame])
+            return path_collection,
+
+        func_animation = matplotlib.animation.FuncAnimation(
+            fig,
+            update,
+            frames=np.arange(len(data)),
+            init_func=init,
+            blit=True,
+        )
+        # plt.show()
+        func_animation.save(self.directory / "animation.mp4", writer="ffmpeg")
+        plt.close(fig)
 
 
 extension_option = click.option('-x', '--extension', default='png')
@@ -67,7 +127,7 @@ def line(num_entities: int, num_epochs: int, extension: str, loss: Type[Loss], i
 @main.command()
 @click.option('-r', '--rows', type=int, default=8, show_default=True)
 @click.option('-c', '--columns', type=int, default=9, show_default=True)
-@click.option('-e', '--num-epochs', type=int, default=400, show_default=True)
+@click.option('-e', '--num-epochs', type=int, default=600, show_default=True)
 @extension_option
 @loss_resolver.get_option('--loss', default='nssa')
 @inverse_option
@@ -86,7 +146,6 @@ def train(
     loss: Type[Loss],
 ):
     directory = HERE.joinpath(name)
-    directory.mkdir(parents=True, exist_ok=True)
 
     # Set the random seed for all experiments
     random_seed = 0
@@ -100,7 +159,7 @@ def train(
         embedding_dim=2,
         random_seed=random_seed,
         preferred_device='cpu',
-        entity_constrainer=None,
+        entity_constrainer=None,  # if you leave this as the default, the entities all just live on the unit circle
         entity_initializer='xavier_uniform',
     )
     optimizer = Adam(
@@ -113,26 +172,15 @@ def train(
         optimizer=optimizer,
         automatic_memory_optimization=False,  # not necessary on CPU
     )
-    losses = trainer.train(
+    trainer.train(
         triples_factory=triples_factory,
         num_epochs=num_epochs,
         batch_size=256,
-        callbacks=EntityPlotCallback(directory / 'img', extension),
+        callbacks=[
+            EntityPlotCallback(directory, extension),
+            LazyEntityPlotCallback(directory),
+        ],
     )
-
-    fig, ax = plt.subplots(1, 1, figsize=(6, 4))
-    x, y = zip(*enumerate(losses))
-    sns.lineplot(x=x, y=y, ax=ax)
-    ax.set_xlabel('Epoch')
-    ax.set_ylabel('Loss')
-    fig.tight_layout()
-    fig.savefig(directory.joinpath('losses').with_suffix('.svg'))
-    plt.close(fig)
-
-    if num_epochs > 100:
-        click.secho(f'Start making GIF ({time.asctime()})')
-        os.system(f'convert -delay 5 -loop 1 {directory}/img/*.{extension} {directory}/embedding.gif')
-        click.secho(f'Done making GIF ({time.asctime()})')
 
 
 def plot(*, directory: pathlib.Path, model: Model, epoch: int, loss: float, extension: str):
