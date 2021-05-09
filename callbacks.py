@@ -35,6 +35,7 @@ class EntityPlotCallback(TrainingCallback):
         subdirectory_name: str = "img",
         filename: str = "embedding",
         skip_post: bool = False,
+        delay: int = 5,
     ):
         super().__init__()
         self.directory = directory
@@ -44,6 +45,7 @@ class EntityPlotCallback(TrainingCallback):
         self.frequency = frequency
         self.filename = filename
         self.skip_post = skip_post
+        self.delay = delay
         self.static_extension = static_extension.lstrip(".")
         if animated_extensions is None:
             self.animated_extensions = ["gif"]
@@ -81,7 +83,7 @@ class EntityPlotCallback(TrainingCallback):
                 f"{self.filename}.{animated_extension}"
             ).as_posix()
             os.system(
-                f"convert -delay 5 -loop 1 {self.subdirectory}/*.{self.static_extension} {path}"
+                f"convert -delay {self.delay} -loop 1 {self.subdirectory}/*.{self.static_extension} {path}"
             )
             click.secho(f"Done making {animated_extension} ({time.asctime()})")
 

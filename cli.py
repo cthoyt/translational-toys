@@ -64,8 +64,9 @@ def squares(rows: int, columns: int, num_epochs: int, loss: Type[Loss], inverse:
 @main.command()
 @click.option("-r", "--rows", type=int, default=2, show_default=True)
 @click.option("-c", "--columns", type=int, default=5, show_default=True)
-@click.option("-e", "--num-epochs", type=int, default=200, show_default=True)
-@click.option("-y", "--learning_rate", type=float, default=1.0, show_default=True)
+@click.option("-e", "--num-epochs", type=int, default=350, show_default=True)
+@click.option("-y", "--learning_rate", type=float, default=.60, show_default=True)
+@click.option("-d", "--delay", type=float, default=10, show_default=True)
 @loss_resolver.get_option("--loss", default="softplus")
 @inverse_option
 @verbose_option
@@ -76,6 +77,7 @@ def hexagons(
     loss: Type[Loss],
     inverse: bool,
     learning_rate: float,
+    delay: int,
 ):
     """Train a translational model on a hexagonal grid."""
     triples_factory = hex_grid_factory(
@@ -87,6 +89,7 @@ def hexagons(
         num_epochs=num_epochs,
         loss=loss,
         learning_rate=learning_rate,
+        delay=delay,
     )
 
 
@@ -97,6 +100,8 @@ def train(
     loss: Type[Loss],
     skip_post: bool = False,
     learning_rate: float = 0.5,
+    frequency: int = 5,
+    delay: int = 5,
 ) -> None:
     click.secho(f"Training {name}", fg="green", bold=True)
     directory = HERE.joinpath("results", name)
@@ -143,7 +148,8 @@ def train(
             EntityPlotCallback(
                 directory=directory,
                 animated_extensions=["gif", "webp"],
-                frequency=5,
+                frequency=frequency,
+                delay=delay,
                 skip_post=skip_post,
             ),
             # LazyEntityPlotCallback(directory),
