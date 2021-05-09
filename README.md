@@ -11,7 +11,7 @@ A linear dataset embedded with TransE/SoftPlus Loss by running `python cli.py li
 
 <picture>
   <source srcset="results/line/embedding.webp" type="image/webp">
-  <source srcset="results/line/embedding.gif" type="image/png"> 
+  <source srcset="results/line/embedding.gif" type="image/gif"> 
   <img src="results/line/embedding.gif" alt="Embedding of a line in 2D">
 </picture>
 
@@ -21,7 +21,7 @@ A square grid dataset embedded with TransE/NSSA Loss by running `python cli.py s
 
 <picture>
   <source srcset="results/square_grid/embedding.webp" type="image/webp">
-  <source srcset="results/square_grid/embedding.gif" type="image/png"> 
+  <source srcset="results/square_grid/embedding.gif" type="image/gif"> 
   <img src="results/square_grid/embedding.gif" alt="Embedding of a square grid in 2D">
 </picture>
 
@@ -34,7 +34,7 @@ A hexagonal grid dataset embedded with TransE/SoftPlus Loss by running `python c
 
 <picture>
   <source srcset="results/hexagon_grid/embedding.webp" type="image/webp">
-  <source srcset="results/hexagon_grid/embedding.gif" type="image/png"> 
+  <source srcset="results/hexagon_grid/embedding.gif" type="image/gif"> 
   <img src="results/hexagon_grid/embedding.gif" alt="Embedding of a square grid in 2D">
 </picture>
 
