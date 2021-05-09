@@ -87,7 +87,6 @@ def hexagons(
         num_epochs=num_epochs,
         loss=loss,
         learning_rate=learning_rate,
-        skip_post=True,
     )
 
 
