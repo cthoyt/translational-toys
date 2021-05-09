@@ -38,8 +38,9 @@ A hexagonal grid dataset embedded with TransE/SoftPlus Loss by running `python c
   <img src="results/hexagon_grid/embedding.gif" alt="Embedding of a square grid in 2D">
 </picture>
 
-**Note** this obviously didn't learn a nice hexagon grid. Applying a normalization to the relations to force
-them to all be the same length could fix it.
+**Note** the hexagonal grid shape is not learned if there are no constraints on the relations because
+it's easier to learn different sizes, and just create a square grid. To get this behavior, I ran a modified
+TransE in which I set the relation constrainer to `normalize`.
 
 ## Circle in 2D
 
