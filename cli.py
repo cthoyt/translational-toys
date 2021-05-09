@@ -15,11 +15,11 @@ from pykeen.models import TransE
 from pykeen.training import LCWATrainingLoop
 from pykeen.triples import CoreTriplesFactory
 from pykeen.utils import set_random_seed
-from triples import line_factory, mesh_factory
+from triples import hex_grid_factory, line_factory, square_grid_factory
 
 HERE = pathlib.Path(__file__).parent.resolve()
 
-inverse_option = click.option('--inverse', is_flag=True)
+inverse_option = click.option("--inverse", is_flag=True)
 
 
 @click.group()
@@ -28,28 +28,67 @@ def main():
 
 
 @main.command()
-@click.option('-n', '--num-entities', type=int, default=40, show_default=True)
-@click.option('-e', '--num-epochs', type=int, default=800, show_default=True)
-@loss_resolver.get_option('--loss', default='softplus')
+@click.option("-n", "--num-entities", type=int, default=40, show_default=True)
+@click.option("-e", "--num-epochs", type=int, default=800, show_default=True)
+@loss_resolver.get_option("--loss", default="softplus")
 @inverse_option
 @verbose_option
 def line(num_entities: int, num_epochs: int, loss: Type[Loss], inverse: bool):
     """Train a translational model on a line."""
     triples_factory = line_factory(num_entities, create_inverse_triples=inverse)
-    train(name='line', triples_factory=triples_factory, num_epochs=num_epochs, loss=loss)
+    train(
+        name="line", triples_factory=triples_factory, num_epochs=num_epochs, loss=loss
+    )
 
 
 @main.command()
-@click.option('-r', '--rows', type=int, default=8, show_default=True)
-@click.option('-c', '--columns', type=int, default=9, show_default=True)
-@click.option('-e', '--num-epochs', type=int, default=600, show_default=True)
-@loss_resolver.get_option('--loss', default='nssa')
+@click.option("-r", "--rows", type=int, default=8, show_default=True)
+@click.option("-c", "--columns", type=int, default=9, show_default=True)
+@click.option("-e", "--num-epochs", type=int, default=600, show_default=True)
+@loss_resolver.get_option("--loss", default="nssa")
 @inverse_option
 @verbose_option
-def mesh(rows: int, columns: int, num_epochs: int, loss: Type[Loss], inverse: bool):
-    """Train a translational model on a mesh."""
-    triples_factory = mesh_factory(rows=rows, columns=columns, create_inverse_triples=inverse)
-    train(name='square_grid', triples_factory=triples_factory, num_epochs=num_epochs, loss=loss)
+def squares(rows: int, columns: int, num_epochs: int, loss: Type[Loss], inverse: bool):
+    """Train a translational model on a square grid."""
+    triples_factory = square_grid_factory(
+        rows=rows, columns=columns, create_inverse_triples=inverse
+    )
+    train(
+        name="square_grid",
+        triples_factory=triples_factory,
+        num_epochs=num_epochs,
+        loss=loss,
+    )
+
+
+@main.command()
+@click.option("-r", "--rows", type=int, default=2, show_default=True)
+@click.option("-c", "--columns", type=int, default=5, show_default=True)
+@click.option("-e", "--num-epochs", type=int, default=200, show_default=True)
+@click.option("-y", "--learning_rate", type=float, default=1.0, show_default=True)
+@loss_resolver.get_option("--loss", default="softplus")
+@inverse_option
+@verbose_option
+def hexagons(
+    rows: int,
+    columns: int,
+    num_epochs: int,
+    loss: Type[Loss],
+    inverse: bool,
+    learning_rate: float,
+):
+    """Train a translational model on a hexagonal grid."""
+    triples_factory = hex_grid_factory(
+        rows=rows, columns=columns, create_inverse_triples=inverse
+    )
+    train(
+        name="hexagon_grid",
+        triples_factory=triples_factory,
+        num_epochs=num_epochs,
+        loss=loss,
+        learning_rate=learning_rate,
+        skip_post=True,
+    )
 
 
 def train(
@@ -57,8 +96,19 @@ def train(
     num_epochs: int,
     name: str,
     loss: Type[Loss],
+    skip_post: bool = False,
+    learning_rate: float = 0.5,
 ) -> None:
-    directory = HERE.joinpath(name)
+    click.secho(f"Training {name}", fg="green", bold=True)
+    directory = HERE.joinpath("results", name)
+    directory.mkdir(exist_ok=True, parents=True)
+
+    # import numpy as np
+    # np.savetxt(
+    #     directory / 'triples.tsv',
+    #     triples_factory.mapped_triples.detach().numpy().astype(int),
+    #     delimiter='\t',
+    # )
 
     # Set the random seed for all experiments
     random_seed = 0
@@ -71,13 +121,14 @@ def train(
         scoring_fct_norm=1,
         embedding_dim=2,
         random_seed=random_seed,
-        preferred_device='cpu',
+        preferred_device="cpu",
         entity_constrainer=None,  # if you leave this as the default, the entities all just live on the unit circle
-        entity_initializer='xavier_uniform',
+        entity_initializer="xavier_uniform",
+        relation_constrainer="normalize",
     )
     optimizer = Adam(
         params=model.get_grad_params(),
-        lr=0.5,
+        lr=learning_rate,
     )
     trainer = LCWATrainingLoop(
         triples_factory=triples_factory,
@@ -90,11 +141,17 @@ def train(
         num_epochs=num_epochs,
         batch_size=256,
         callbacks=[
-            EntityPlotCallback(directory=directory, animated_extensions=['gif', 'webp']),
+            EntityPlotCallback(
+                directory=directory,
+                animated_extensions=["gif", "webp"],
+                frequency=5,
+                skip_post=skip_post,
+            ),
             # LazyEntityPlotCallback(directory),
         ],
     )
+    model.save_state(directory / "model.pkl")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
