@@ -57,7 +57,7 @@ class EntityPlotCallback(TrainingCallback):
         if epoch % self.frequency:
             return  # only make a plot every self.frequency epochs
         self.loop.model.eval()
-        entity_data = self.loop.model.entity_embeddings().detach().clone().numpy()
+        entity_data = self.loop.model.entity_representations[0]().detach().clone().numpy()
         self.data.append(entity_data)
 
     def post_train(self, losses: List[float]) -> None:
