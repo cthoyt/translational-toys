@@ -5,21 +5,18 @@
 import os
 import pathlib
 import time
-from typing import List, Union
+from typing import List, Optional, Tuple, Union
 
 import click
-import matplotlib.animation
 import matplotlib.pyplot as plt
 import numpy as np
 import pygifsicle
 import seaborn as sns
 
-from pykeen.models import Model
 from pykeen.training import TrainingCallback
 
 __all__ = [
     "EntityPlotCallback",
-    "LazyEntityPlotCallback",
 ]
 
 FIGSIZE = 6, 4
@@ -32,21 +29,23 @@ class EntityPlotCallback(TrainingCallback):
         static_extension: str = "png",
         animated_extensions: Union[str, List[str]] = "gif",
         frequency: int = 5,
-        subdirectory_name: str = "img",
         filename: str = "embedding",
         skip_post: bool = False,
         delay: int = 5,
+        apply_lims: bool = False,
     ):
         super().__init__()
         self.directory = directory
-        self.subdirectory_name = subdirectory_name
-        self.subdirectory = directory / subdirectory_name
+        self.filename = filename
+        self.subdirectory_name = filename
+        self.subdirectory = directory / filename
         self.subdirectory.mkdir(parents=True, exist_ok=True)
         self.frequency = frequency
-        self.filename = filename
         self.skip_post = skip_post
         self.delay = delay
         self.static_extension = static_extension.lstrip(".")
+        self.apply_lims = apply_lims
+        self.data = []
         if animated_extensions is None:
             self.animated_extensions = ["gif"]
         elif isinstance(animated_extensions, str):
@@ -57,15 +56,12 @@ class EntityPlotCallback(TrainingCallback):
     def post_epoch(self, epoch: int, epoch_loss: float):
         if epoch % self.frequency:
             return  # only make a plot every self.frequency epochs
-        plot(
-            directory=self.subdirectory,
-            model=self.loop.model,
-            epoch=epoch,
-            epoch_loss=epoch_loss,
-            extension=self.static_extension,
-        )
+        self.loop.model.eval()
+        entity_data = self.loop.model.entity_embeddings().detach().clone().numpy()
+        self.data.append(entity_data)
 
     def post_train(self, losses: List[float]) -> None:
+        # Plot losses
         fig, ax = plt.subplots(1, 1, figsize=(6, 4))
         x, y = zip(*enumerate(losses))
         sns.lineplot(x=x, y=y, ax=ax)
@@ -75,8 +71,27 @@ class EntityPlotCallback(TrainingCallback):
         fig.savefig(self.directory.joinpath("losses").with_suffix(".svg"))
         plt.close(fig)
 
+        # Plot epochs
+        data = np.stack(self.data)
+        if self.apply_lims:
+            low = data.min(axis=(0, 1))
+            high = data.max(axis=(0, 1))
+            lims = ((low[0] - 0.5, high[0] + 0.5), (low[1] - 0.5, high[1] + 0.5))
+        else:
+            lims = None
+        for i, (entity_data, epoch_loss) in enumerate(zip(data, losses)):
+            plot(
+                directory=self.subdirectory,
+                entity_data=entity_data,
+                epoch=i * self.frequency,
+                epoch_loss=epoch_loss,
+                extension=self.static_extension,
+                lims=lims,
+            )
         if self.skip_post:
             return
+
+        # Create animation
         for animated_extension in self.animated_extensions:
             click.secho(f"Start making {animated_extension} ({time.asctime()})")
             path = self.directory.joinpath(
@@ -97,66 +112,25 @@ class EntityPlotCallback(TrainingCallback):
                 )
 
 
-class LazyEntityPlotCallback(TrainingCallback):
-    def __init__(self, directory, frequency: int = 5):
-        super().__init__()
-        self.directory = directory
-        self.directory.mkdir(parents=True, exist_ok=True)
-        self.frequency = frequency
-        self.data = []
-
-    def post_epoch(self, epoch: int, epoch_loss: float):
-        if epoch % self.frequency:
-            return
-        self.loop.model.eval()
-        entity_data = self.loop.model.entity_embeddings().detach().numpy()
-        self.data.append(entity_data)
-
-    def post_train(self, losses: List[float]):
-        data = np.stack(self.data)
-        fig, ax = plt.subplots(figsize=FIGSIZE)
-        path_collection = plt.scatter([], [])
-
-        def init():
-            ax.set_xlim(data[..., 0].min(), data[..., 0].max())
-            ax.set_ylim(data[..., 1].min(), data[..., 1].max())
-            return (path_collection,)
-
-        def update(frame: int):
-            path_collection.set_offsets(data[frame])
-            return (path_collection,)
-
-        func_animation = matplotlib.animation.FuncAnimation(
-            fig,
-            update,
-            frames=np.arange(len(data)),
-            init_func=init,
-            blit=True,
-        )
-        # plt.show()
-        func_animation.save(self.directory / "embeddings.mp4", writer="ffmpeg")
-        plt.close(fig)
-
-
 def plot(
     *,
     directory: pathlib.Path,
-    model: Model,
+    entity_data: np.ndarray,
     epoch: int,
     epoch_loss: float,
     extension: str = "png",
+    lims: Optional[Tuple[Tuple[float, float], Tuple[float, float]]] = None,
 ) -> None:
     """Save a figure of the embedding plot for the model at the given epoch.
 
     :param directory: The directory in which to save the chart
-    :param model: The model whose embeddings will be plotted
+    :param entity_data: The embeddings to be plotted
     :param epoch: The epoch from which the embeddings are plotted
     :param epoch_loss: The loss value accumulated over all sub-batches during the epoch
     :param extension: The file extension to use for saving. Defaults to ``png``.
+    :param lims: The limits to impose on the plot, if any
     """
     fig, ax = plt.subplots(1, 1, figsize=FIGSIZE)
-    model.eval()
-    entity_data = model.entity_embeddings().detach().numpy()
     p1 = sns.scatterplot(
         x=entity_data[:, 0],
         y=entity_data[:, 1],
@@ -177,6 +151,9 @@ def plot(
         )
 
     ax.set_title(f"Epoch: {epoch:04}; Loss: {epoch_loss:.04}")
+    if lims is not None:
+        ax.set_xlim(*lims[0])
+        ax.set_ylim(*lims[1])
     fig.tight_layout()
     extension = extension.lstrip(".")  # don't want double dots
     fig.savefig(directory.joinpath(f"{epoch:04}").with_suffix(f".{extension}"), dpi=300)
