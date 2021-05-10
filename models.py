@@ -16,7 +16,7 @@ class TransE(ERModel):
             entity_representations=EmbeddingSpecification(
                 embedding_dim=embedding_dim,
                 initializer='xavier_uniform',
-                constrainer='normalize',
+                constrainer=None,
             ),
             relation_representations=EmbeddingSpecification(
                 embedding_dim=embedding_dim,
