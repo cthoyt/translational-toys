@@ -9,7 +9,7 @@ import click
 from more_click import verbose_option
 from torch.optim import Adam
 
-from callbacks import EntityPlotCallback, LazyEntityPlotCallback
+from callbacks import EntityPlotCallback
 from pykeen.losses import Loss, loss_resolver
 from pykeen.models import TransE
 from pykeen.training import LCWATrainingLoop
@@ -65,7 +65,7 @@ def squares(rows: int, columns: int, num_epochs: int, loss: Type[Loss], inverse:
 @click.option("-r", "--rows", type=int, default=2, show_default=True)
 @click.option("-c", "--columns", type=int, default=5, show_default=True)
 @click.option("-e", "--num-epochs", type=int, default=350, show_default=True)
-@click.option("-y", "--learning_rate", type=float, default=.60, show_default=True)
+@click.option("-y", "--learning_rate", type=float, default=0.60, show_default=True)
 @click.option("-d", "--delay", type=float, default=10, show_default=True)
 @loss_resolver.get_option("--loss", default="softplus")
 @inverse_option
@@ -145,19 +145,21 @@ def train(
         num_epochs=num_epochs,
         batch_size=256,
         callbacks=[
-            # EntityPlotCallback(
-            #     directory=directory,
-            #     animated_extensions=["gif", "webp"],
-            #     frequency=frequency,
-            #     delay=delay,
-            #     skip_post=skip_post,
-            # ),
-            LazyEntityPlotCallback(
+            EntityPlotCallback(
                 directory=directory,
                 animated_extensions=["gif", "webp"],
                 frequency=frequency,
                 delay=delay,
                 skip_post=skip_post,
+            ),
+            EntityPlotCallback(
+                directory=directory,
+                animated_extensions=["gif", "webp"],
+                frequency=frequency,
+                delay=delay,
+                skip_post=skip_post,
+                apply_lims=True,
+                filename="embeddings_static",
             ),
         ],
     )
