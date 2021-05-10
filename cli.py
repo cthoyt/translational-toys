@@ -128,7 +128,7 @@ def train(
         preferred_device="cpu",
         entity_constrainer=None,  # if you leave this as the default, the entities all just live on the unit circle
         entity_initializer="xavier_uniform",
-        # relation_constrainer="normalize",
+        relation_constrainer="normalize",
     )
     optimizer = Adam(
         params=model.get_grad_params(),
