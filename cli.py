@@ -10,8 +10,8 @@ from more_click import verbose_option
 from torch.optim import Adam
 
 from callbacks import EntityPlotCallback
+from models import TransE
 from pykeen.losses import Loss, loss_resolver
-from pykeen.models import TransE
 from pykeen.training import LCWATrainingLoop
 from pykeen.triples import CoreTriplesFactory
 from pykeen.utils import set_random_seed
@@ -126,9 +126,6 @@ def train(
         embedding_dim=2,
         random_seed=random_seed,
         preferred_device="cpu",
-        entity_constrainer=None,  # if you leave this as the default, the entities all just live on the unit circle
-        entity_initializer="xavier_uniform",
-        relation_constrainer="normalize",
     )
     optimizer = Adam(
         params=model.get_grad_params(),
