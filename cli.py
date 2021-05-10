@@ -9,7 +9,7 @@ import click
 from more_click import verbose_option
 from torch.optim import Adam
 
-from callbacks import EntityPlotCallback
+from callbacks import EntityPlotCallback, LazyEntityPlotCallback
 from pykeen.losses import Loss, loss_resolver
 from pykeen.models import TransE
 from pykeen.training import LCWATrainingLoop
@@ -128,7 +128,7 @@ def train(
         preferred_device="cpu",
         entity_constrainer=None,  # if you leave this as the default, the entities all just live on the unit circle
         entity_initializer="xavier_uniform",
-        relation_constrainer="normalize",
+        # relation_constrainer="normalize",
     )
     optimizer = Adam(
         params=model.get_grad_params(),
@@ -145,14 +145,20 @@ def train(
         num_epochs=num_epochs,
         batch_size=256,
         callbacks=[
-            EntityPlotCallback(
+            # EntityPlotCallback(
+            #     directory=directory,
+            #     animated_extensions=["gif", "webp"],
+            #     frequency=frequency,
+            #     delay=delay,
+            #     skip_post=skip_post,
+            # ),
+            LazyEntityPlotCallback(
                 directory=directory,
                 animated_extensions=["gif", "webp"],
                 frequency=frequency,
                 delay=delay,
                 skip_post=skip_post,
             ),
-            # LazyEntityPlotCallback(directory),
         ],
     )
     model.save_state(directory / "model.pkl")
