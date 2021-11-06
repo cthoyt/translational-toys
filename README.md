@@ -4,7 +4,12 @@ This repository contains workflows for training knowledge graph embedding models
 on knowledge graphs representing interesting geometries (generated
 by [`geometric_graphs`](https://github.com/cthoyt/geometric-graphs/))
 using [PyKEEN](https://github.com/pykeen/pykeen) and animate the evolution of
-their entity embeddings.
+their entity embeddings. Rerun the examples with
+
+```shell
+$ pip install tox
+$ tox
+```
 
 ## Line
 
