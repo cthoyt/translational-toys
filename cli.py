@@ -9,13 +9,13 @@ import click
 from geometric_graphs import hex_grid_factory, line_factory, square_grid_factory
 from more_click import verbose_option
 from pykeen.losses import Loss, loss_resolver
+from pykeen.models import TransE
 from pykeen.training import LCWATrainingLoop
 from pykeen.triples import CoreTriplesFactory
 from pykeen.utils import set_random_seed
 from torch.optim import Adam
 
 from callbacks import EntityPlotCallback
-from models import TransE
 
 HERE = pathlib.Path(__file__).parent.resolve()
 
@@ -126,6 +126,8 @@ def train(
         embedding_dim=2,
         random_seed=random_seed,
         preferred_device="cpu",
+        entity_constrainer=None,
+        relation_constrainer="normalize",
     )
     optimizer = Adam(
         params=model.get_grad_params(),
