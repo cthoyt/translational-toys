@@ -1,3 +1,3 @@
-python cli.py hexagons
-python cli.py squares
-python cli.py line
+python main.py hexagons
+python main.py squares
+python main.py line
