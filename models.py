@@ -3,7 +3,7 @@ from pykeen.nn import EmbeddingSpecification
 from pykeen.nn.modules import TransEInteraction
 
 __all__ = [
-    'TransE',
+    "TransE",
 ]
 
 
@@ -15,13 +15,13 @@ class TransE(ERModel):
             interaction=TransEInteraction(p=scoring_fct_norm, power_norm=False),
             entity_representations=EmbeddingSpecification(
                 embedding_dim=embedding_dim,
-                initializer='xavier_uniform',
+                initializer="xavier_uniform",
                 constrainer=None,
             ),
             relation_representations=EmbeddingSpecification(
                 embedding_dim=embedding_dim,
-                initializer='xavier_uniform_norm',
-                constrainer='normalize'
+                initializer="xavier_uniform_norm",
+                constrainer="normalize",
             ),
             **kwargs,
         )

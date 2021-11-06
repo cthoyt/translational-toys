@@ -6,16 +6,16 @@ import pathlib
 from typing import Type
 
 import click
+from geometric_graphs import hex_grid_factory, line_factory, square_grid_factory
 from more_click import verbose_option
-from torch.optim import Adam
-
-from callbacks import EntityPlotCallback
-from models import TransE
 from pykeen.losses import Loss, loss_resolver
 from pykeen.training import LCWATrainingLoop
 from pykeen.triples import CoreTriplesFactory
 from pykeen.utils import set_random_seed
-from triples import hex_grid_factory, line_factory, square_grid_factory
+from torch.optim import Adam
+
+from callbacks import EntityPlotCallback
+from models import TransE
 
 HERE = pathlib.Path(__file__).parent.resolve()
 

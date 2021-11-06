@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pygifsicle
 import seaborn as sns
-
 from pykeen.training import TrainingCallback
 
 __all__ = [
@@ -56,8 +55,13 @@ class EntityPlotCallback(TrainingCallback):
     def post_epoch(self, epoch: int, epoch_loss: float):
         if epoch % self.frequency:
             return  # only make a plot every self.frequency epochs
-        self.loop.model.eval()
-        entity_data = self.loop.model.entity_representations[0]().detach().clone().numpy()
+        self.training_loop.model.eval()
+        entity_data = (
+            self.training_loop.model.entity_representations[0]()
+            .detach()
+            .clone()
+            .numpy()
+        )
         self.data.append(entity_data)
 
     def post_train(self, losses: List[float]) -> None:
